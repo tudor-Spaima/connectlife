@@ -221,5 +221,5 @@ class AC1UI(App):
             self.query_one("#status").update(f"[red]Error: {e}[/red]")
 
 if __name__ == "__main__":
-    passwd = getpass("Enter your ConnectLife password: ")
+    passwd = getpass("Enter password: ")
     AC1UI(passwd).run()
