@@ -2,8 +2,8 @@ import asyncio
 from connectlife.api import ConnectLifeApi
 from connectlife.appliance import DeviceType
 
-async def main():
-    api = ConnectLifeApi(username="tudordanciu770@gmail.com", password="Guravaii3!")
+async def main(passwd):
+    api = ConnectLifeApi(username="tudordanciu770@gmail.com", password=passwd)
     await api.login()
     devices = await api.get_appliances()
 
@@ -31,4 +31,4 @@ async def main():
     ac1 = next((d for d in api.appliances if d.device_nickname == "AC1"), None)
     print("Updated t_power:", ac1.status_list.get("t_power"))
 
-asyncio.run(main())
+asyncio.run(main(input("Enter password: ")))

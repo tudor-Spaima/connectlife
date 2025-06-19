@@ -1,4 +1,5 @@
 import asyncio
+from getpass import getpass
 from connectlife.api import ConnectLifeApi
 from connectlife.appliance import DeviceType
 from textual.app import App, ComposeResult
@@ -24,16 +25,15 @@ class AC1UI(App):
 
     Button:hover {
         background: #444444;
-        color: white;
     }
 
     Button:focus {
+        outline: none;
         background: #2b2b2b;
         color: white;
         border: none;
         text-style: none;
     }
-
 
     #power_on {
         background: green;
@@ -57,8 +57,9 @@ class AC1UI(App):
     in_temperature = reactive("--")
     mode = reactive("--")
 
-    def __init__(self):
+    def __init__(self, passwd: str):
         super().__init__()
+        self.passwd = passwd
         self.api = None
         self.ac1 = None
         self.polling_task = None
@@ -69,7 +70,7 @@ class AC1UI(App):
         self.polling_task = asyncio.create_task(self.auto_refresh())
 
     async def initialize_api(self):
-        self.api = ConnectLifeApi(username="tudordanciu770@gmail.com", password="Guravaii3!")
+        self.api = ConnectLifeApi(username="tudordanciu770@gmail.com", password=self.passwd)
         await self.api.login()
         devices = await self.api.get_appliances()
         self.ac1 = next((d for d in devices if d.device_nickname == "AC1" and d.device_type == DeviceType.AIRCONDITIONER), None)
@@ -208,4 +209,5 @@ class AC1UI(App):
             self.query_one("#status").update(f"[red]Error: {e}[/red]")
 
 if __name__ == "__main__":
-    AC1UI().run()
+    passwd = getpass("Enter your ConnectLife password: ")
+    AC1UI(passwd).run()
