@@ -48,6 +48,13 @@ class AC1UI(App):
     .tiny-row Button {
         margin-right: 1;
     }
+
+    #status-bar {
+        height: 1;
+        background: green;
+        width: 0%;
+        transition: width 100ms;
+    }
     """
 
     BINDINGS = [("q", "quit", "Quit")]
@@ -95,9 +102,6 @@ class AC1UI(App):
             mode_map = {"1": "Auto", "2": "Cool", "3": "Dry", "4": "Fan", "5": "Heat"}
             self.mode = mode_map.get(str(mode), "--")
             self.update_ui()
-            self.query_one("#status").update(
-                f"[b]Power:[/b] {self.power_state}    [b]Target Temp:[/b] {self.target_temperature} °C    [b]In Temp:[/b] {self.in_temperature} °C    [b]Mode:[/b] {self.mode}    [b]Fan:[/b] {fan}  [b]Swing V:[/b] {swing_v}  [b]Swing H:[/b] {swing_h}"
-            )
         except Exception as e:
             self.query_one("#status").update(f"[red]Error: {e}[/red]")
 
@@ -106,8 +110,15 @@ class AC1UI(App):
             await asyncio.sleep(5)
             await self.refresh_status()
 
+    async def animate_status_bar(self):
+        bar = self.query_one("#status-bar", Static)
+        for i in range(0, 101, 5):
+            bar.styles.width = f"{i}%"
+            await asyncio.sleep(0.05)
+        bar.styles.width = "0%"
+
     async def send_command(self, updates: dict):
-        self.query_one("#status").update("[blink yellow]Waiting for AC to update...[/blink yellow]")
+        await self.animate_status_bar()
         await self.api.update_appliance(self.ac1.puid, updates)
         await asyncio.sleep(0.1)
         await self.refresh_status()
@@ -133,7 +144,8 @@ class AC1UI(App):
 """,
                 id="ascii-art"
             ),
-            Static("[blink yellow]Loading...[/blink yellow]", id="status"),
+            Static("[b]Connecting...[/b]", id="status"),
+            Static("", id="status-bar"),
             Horizontal(
                 Button("Power ON", id="power_on", variant="success"),
                 Button("Power OFF", id="power_off", variant="error"),
