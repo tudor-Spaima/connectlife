@@ -15,15 +15,20 @@ import platform
 
 import os
 import platform
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_SCHEDULE_FILE = os.path.join(BASE_DIR, "scheduled_actions.json")
-PI_SCHEDULE_FILE = "/home/tudor/connectlife/scheduled_actions.json"
 
-if platform.node().startswith("raspberrypi"):
-    SCHEDULE_FILE = PI_SCHEDULE_FILE
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_SCHEDULE_FILE = BASE_DIR / "scheduled_actions.json"
+HOME_DIR = Path.home()
+
+# raspberry pi specific executable path
+if platform.system() == "Linux":  # and platform.node().startswith("raspberrypi")
+    SCHEDULE_FILE = HOME_DIR / "connectlife" / "scheduled_actions.json"
 else:
     SCHEDULE_FILE = DEFAULT_SCHEDULE_FILE
+
+SCHEDULE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 
