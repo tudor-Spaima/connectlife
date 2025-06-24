@@ -85,6 +85,7 @@ class AC1UI(App):
 
     async def on_mount(self):
         self.load_schedules()
+        self.update_schedule_table()
         await self.initialize_api()
         select = self.query_one("#device_select", Select)
         select.options = [("AC1", "AC1"), ("AC2", "AC2")]
@@ -152,6 +153,7 @@ class AC1UI(App):
         self.query_one("#clock-display").update(f"[b]{now}[/b]")
 
     async def check_schedules(self):
+        self.load_schedules()  # Reload from file every second
         now = datetime.now()
         pending = [s for s in self.scheduled_actions if s["time"] <= now]
         for action in pending:
@@ -163,8 +165,9 @@ class AC1UI(App):
                     await self.send_command(action["command"])
                 self.selected_device = current_device
             self.scheduled_actions.remove(action)
-        self.update_schedule_table()
         self.save_schedules()
+        self.update_schedule_table()
+
 
 
 
