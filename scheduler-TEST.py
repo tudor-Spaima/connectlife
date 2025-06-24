@@ -4,52 +4,62 @@ from connectlife.api import ConnectLifeApi
 from connectlife.appliance import DeviceType
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
-from textual.widgets import Button, Static, Header, Footer, Select, DataTable, Input
+from textual.widgets import Button, Static, Header, Footer, LoadingIndicator, Select, DataTable, Input
 from textual.reactive import reactive
 from datetime import datetime, timedelta
 
 
 class AC1UI(App):
+
     CSS = """
     Screen {
-        background: #0a0a0a;
-        color: #d0d0ff;
+        background: #203a43;
+        color: #e0e0e0;
+        width: 100;
+        height: 35;
+        overflow: hidden;
     }
     Button {
-        background: #111133;
-        color: #d0d0ff;
+        background: #2c3e50;
+        color: #ecf0f1;
         padding: 0 2;
         height: 3;
         width: 20;
+        max-width: 20;
         border: solid;
         text-style: bold;
     }
     Button:hover {
-        background: #222266;
-        color: #8a2be2;
+        background: #34495e;
+        color: #1abc9c;
     }
     #power_on { background: #27ae60; color: black; }
     #power_off { background: #c0392b; color: black; }
-    #ascii-art { color: #8a2be2; text-style: bold underline; }
+    #ascii-art { color: #00bfff; text-style: bold underline; }
     #clock-display {
-        color: #00ffff;
+        color: #00ff00;
         text-style: bold;
         height: 3;
         width: 20;
         content-align: center middle;
         border: solid;
-        background: #111133;
+        background: #2c3e50;
         padding: 1;
     }
     .tiny-row Button { margin-right: 1; }
-    #status-bar { height: 1; background: #8a2be2; width: 0%; transition: width 100ms; }
-    #device_select { width: 12; }
+    #status-bar { height: 1; background: #1abc9c; width: 0%; transition: width 100ms; }
+    #device_select { width: 12; max-width: 12; }
     Input, Select {
-        background: #0f0f2f;
-        color: #d0d0ff;
         width: 15;
+        max-width: 15;
     }
-    #schedule_list { height: 10; width: 100%; border: solid; background: #111133; }
+    #schedule_list {
+        height: 10;
+        width: 100;
+        max-width: 100;
+        border: solid;
+        background: #2c3e50;
+    }
     """
 
     BINDINGS = [("q", "quit", "Quit")]
@@ -81,6 +91,9 @@ class AC1UI(App):
         self.set_interval(1, self.update_clock)
         self.set_interval(1, self.check_schedules)
         self.polling_task = asyncio.create_task(self.auto_refresh())
+        self.screen.styles.width = 100
+        self.screen.styles.height = 35
+        self.screen.styles.overflow = "hidden"
 
     async def initialize_api(self):
         self.api = ConnectLifeApi(username="tudordanciu770@gmail.com", password=self.passwd)
@@ -173,12 +186,12 @@ class AC1UI(App):
         yield Vertical(
             Horizontal(
                 Static(r"""
-█████╗   ██████╗  ██████╗ ██████╗ ███████╗███████╗███████╗
-██╔══██╗ ██╔════╝ ██╔════╝ ██╔══██╗██╔════╝██╔════╝██╔════╝
-███████║ ██║  ███╗██║  ███╗██████╔╝█████╗  █████╗  ███████╗
-██╔══██║ ██║   ██║██║   ██║██╔═══╝ ██╔══╝  ██╔══╝  ╚════██║
-██║  ██║ ╚██████╔╝╚██████╔╝██║     ███████╗███████╗███████║
-╚═╝  ╚═╝  ╚═════╝  ╚═════╝ ╚═╝     ╚══════╝╚══════╝╚══════╝
+    █████╗   ██████╗  ██████╗ ██████╗ ███████╗███████╗███████╗
+   ██╔══██╗ ██╔════╝ ██╔════╝ ██╔══██╗██╔════╝██╔════╝██╔════╝
+   ███████║ ██║  ███╗██║  ███╗██████╔╝█████╗  █████╗  ███████╗
+   ██╔══██║ ██║   ██║██║   ██║██╔═══╝ ██╔══╝  ██╔══╝  ╚════██║
+   ██║  ██║ ╚██████╔╝╚██████╔╝██║     ███████╗███████╗███████║
+   ╚═╝  ╚═╝  ╚═════╝  ╚═════╝ ╚═╝     ╚══════╝╚══════╝╚══════╝
 """, id="ascii-art"),
                 Static("", id="clock-display")
             ),
@@ -192,8 +205,6 @@ class AC1UI(App):
             Horizontal(
                 Button("Temp +", id="temp_up"),
                 Button("Temp -", id="temp_down"),
-                Input(placeholder="Target Temp", id="temp_input"),
-                Button("Sync Temp", id="sync_temp"),
                 classes="tiny-row"
             ),
             Horizontal(
@@ -225,6 +236,7 @@ class AC1UI(App):
 
     async def on_button_pressed(self, event: Button.Pressed):
         btn = event.button.id
+
         if btn in ["power_on", "power_off", "temp_up", "temp_down", "mode_cool", "mode_dry", "mode_fan", "mode_heat", "fan_cycle", "swing_v", "swing_h"]:
             await self.control_handler(btn)
         elif btn == "add_schedule":
@@ -233,8 +245,6 @@ class AC1UI(App):
             self.edit_schedule()
         elif btn == "delete_schedule":
             self.delete_schedule()
-        elif btn == "sync_temp":
-            await self.sync_temp_manual()
 
     async def control_handler(self, btn):
         if btn == "power_on":
@@ -259,11 +269,52 @@ class AC1UI(App):
             new_val = "0" if self.device.status_list.get("t_swing_direction") == "1" else "1"
             await self.send_command({"t_swing_direction": new_val})
 
-    async def sync_temp_manual(self):
-        temp_input = self.query_one("#temp_input", Input).value
-        if temp_input and temp_input.isdigit():
-            new_temp = str(min(max(int(temp_input), 16), 30))
-            await self.send_command({"t_temp": new_temp})
+    async def handle_schedule(self):
+        h = float(self.query_one("#hours_input", Input).value or "0")
+        m = float(self.query_one("#minutes_input", Input).value or "0")
+        total_m = h * 60 + m
+        power = self.query_one("#power_select", Select).value
+        temp = self.query_one("#temp_select", Input).value
+        fan = self.query_one("#fan_select", Select).value
+
+        cmd_disp, cmd_payload = {}, {}
+
+        if power:
+            cmd_disp["Power"] = "ON" if power == "1" else "OFF"
+            cmd_payload["t_power"] = power
+            self.last_power = cmd_disp["Power"]
+
+        if temp:
+            cmd_disp["Temp"] = temp
+            cmd_payload["t_temp"] = temp
+            self.last_temp = temp
+
+        if fan:
+            cmd_disp["Fan"] = fan
+            cmd_payload["t_fanspeedcv"] = fan
+            self.last_fan = fan
+
+        if cmd_payload:
+            self.schedule_action(total_m, cmd_disp, cmd_payload, self.edit_index)
+            self.edit_index = None
+
+    def edit_schedule(self):
+        t = self.query_one("#schedule_list", DataTable)
+        if t.cursor_row is not None:
+            s = self.scheduled_actions[t.cursor_row]
+            mins = (s["time"] - datetime.now()).total_seconds() / 60
+            self.query_one("#hours_input", Input).value = str(int(mins // 60))
+            self.query_one("#minutes_input", Input).value = f"{mins % 60:.2f}"
+            self.query_one("#power_select", Select).value = s["command"].get("t_power", "")
+            self.query_one("#temp_select", Input).value = s["command"].get("t_temp", "")
+            self.query_one("#fan_select", Select).value = s["command"].get("t_fanspeedcv", "")
+            self.edit_index = t.cursor_row
+
+    def delete_schedule(self):
+        t = self.query_one("#schedule_list", DataTable)
+        if t.cursor_row is not None:
+            self.scheduled_actions.pop(t.cursor_row)
+            self.update_schedule_table()
 
 
 if __name__ == "__main__":
