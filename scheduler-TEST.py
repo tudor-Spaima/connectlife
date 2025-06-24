@@ -12,54 +12,45 @@ from datetime import datetime, timedelta
 class AC1UI(App):
 
     CSS = """
-    Screen {
-        background: #203a43;
-        color: #e0e0e0;
-        width: 100;
-        height: 35;
-        overflow: hidden;
-    }
-    Button {
-        background: #2c3e50;
-        color: #ecf0f1;
-        padding: 0 2;
-        height: 3;
-        width: 20;
-        max-width: 20;
-        border: solid;
-        text-style: bold;
-    }
-    Button:hover {
-        background: #34495e;
-        color: #1abc9c;
-    }
-    #power_on { background: #27ae60; color: black; }
-    #power_off { background: #c0392b; color: black; }
-    #ascii-art { color: #00bfff; text-style: bold underline; }
-    #clock-display {
-        color: #00ff00;
-        text-style: bold;
-        height: 3;
-        width: 20;
-        content-align: center middle;
-        border: solid;
-        background: #2c3e50;
-        padding: 1;
-    }
-    .tiny-row Button { margin-right: 1; }
-    #status-bar { height: 1; background: #1abc9c; width: 0%; transition: width 100ms; }
-    #device_select { width: 12; max-width: 12; }
-    Input, Select {
-        width: 15;
-        max-width: 15;
-    }
-    #schedule_list {
-        height: 10;
-        width: 100;
-        max-width: 100;
-        border: solid;
-        background: #2c3e50;
-    }
+        Screen {
+            background: #0a0a0a;
+            color: #d0d0ff;
+        }
+        Button {
+            background: #111133;
+            color: #d0d0ff;
+            padding: 0 2;
+            height: 3;
+            width: 20;
+            border: solid;
+            text-style: bold;
+        }
+        Button:hover {
+            background: #222266;
+            color: #8a2be2;
+        }
+        #power_on { background: #27ae60; color: black; }
+        #power_off { background: #c0392b; color: black; }
+        #ascii-art { color: #8a2be2; text-style: bold underline; }
+        #clock-display {
+            color: #00ffff;
+            text-style: bold;
+            height: 3;
+            width: 20;
+            content-align: center middle;
+            border: solid;
+            background: #111133;
+            padding: 1;
+        }
+        .tiny-row Button { margin-right: 1; }
+        #status-bar { height: 1; background: #8a2be2; width: 0%; transition: width 100ms; }
+        #device_select { width: 12; }
+        Input, Select {
+            background: #0f0f2f;
+            color: #d0d0ff;
+            width: 15;
+        }
+        #schedule_list { height: 10; width: 100%; border: solid; background: #111133; }
     """
 
     BINDINGS = [("q", "quit", "Quit")]
@@ -137,10 +128,13 @@ class AC1UI(App):
         bar.styles.width = "0%"
 
     async def send_command(self, updates: dict):
+        if not updates:
+            return  # Ignore empty updates
         await self.animate_status_bar()
         await self.api.update_appliance(self.device.puid, updates)
         await asyncio.sleep(0.1)
         await self.refresh_status()
+
 
     def update_ui(self):
         timestamp = datetime.now().strftime('%H:%M:%S')
@@ -156,10 +150,11 @@ class AC1UI(App):
         now = datetime.now()
         pending = [s for s in self.scheduled_actions if s["time"] <= now]
         for action in pending:
-            if self.device:
+            if self.device and action["command"]:
                 asyncio.create_task(self.send_command(action["command"]))
             self.scheduled_actions.remove(action)
         self.update_schedule_table()
+
 
     def schedule_action(self, delay_minutes, command_display, command_payload, replace_index=None):
         run_time = datetime.now() + timedelta(minutes=delay_minutes)

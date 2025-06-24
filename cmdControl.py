@@ -139,34 +139,87 @@ class AC1UI(App):
         now = datetime.now().strftime("%H:%M:%S")
         self.query_one("#clock-display").update(f"[b]{now}[/b]")
 
-    def check_schedules(self):
+    async def check_schedules(self):
         now = datetime.now()
         pending = [s for s in self.scheduled_actions if s["time"] <= now]
         for action in pending:
-            if self.device:
-                asyncio.create_task(self.send_command(action["command"]))
+            if action["command"]:
+                current_device = self.selected_device
+                self.selected_device = action["device"]
+                await self.select_device(self.selected_device)
+                if self.device:
+                    await self.send_command(action["command"])
+                self.selected_device = current_device
             self.scheduled_actions.remove(action)
         self.update_schedule_table()
 
-    def schedule_action(self, delay_minutes, command_display, command_payload, replace_index=None):
+
+
+    def schedule_action(self, delay_minutes, device_nickname, command_display, command_payload, replace_index=None):
         run_time = datetime.now() + timedelta(minutes=delay_minutes)
-        new_action = {"time": run_time, "command_display": command_display, "command": command_payload}
+        new_action = {
+            "time": run_time,
+            "device": device_nickname,
+            "command_display": command_display,
+            "command": command_payload
+        }
         if replace_index is not None:
             self.scheduled_actions[replace_index] = new_action
         else:
             self.scheduled_actions.append(new_action)
         self.update_schedule_table()
 
+
     def update_schedule_table(self):
         table = self.query_one("#schedule_list", DataTable)
         table.clear(columns=True)
-        table.add_columns("Time", "Power", "Temp", "Fan")
+        table.add_columns("Time", "Device", "Power", "Temp", "Fan")
         for action in self.scheduled_actions:
             time_str = action["time"].strftime("%H:%M:%S")
+            device = action.get("device", "-")
             power = action["command_display"].get("Power", self.last_power)
             temp = action["command_display"].get("Temp", self.last_temp)
             fan = action["command_display"].get("Fan", self.last_fan)
-            table.add_row(time_str, power, temp, fan)
+            table.add_row(time_str, device, power, temp, fan)
+
+
+    async def handle_schedule(self):
+        device_nick = self.query_one("#schedule_device", Select).value
+        h = float(self.query_one("#hours_input", Input).value or "0")
+        m = float(self.query_one("#minutes_input", Input).value or "0")
+        total_m = h * 60 + m
+        power = self.query_one("#power_select", Select).value
+        temp = self.query_one("#temp_select", Input).value
+        fan = self.query_one("#fan_select", Select).value
+
+        cmd_disp, cmd_payload = {}, {}
+
+        if power not in [None, "", Select.BLANK]:
+            cmd_disp["Power"] = "ON" if power == "1" else "OFF"
+            cmd_payload["t_power"] = power
+            self.last_power = cmd_disp["Power"]
+        else:
+            cmd_disp["Power"] = self.last_power
+
+        if temp not in [None, ""]:
+            cmd_disp["Temp"] = temp
+            cmd_payload["t_temp"] = temp
+            self.last_temp = temp
+        else:
+            cmd_disp["Temp"] = self.last_temp
+
+        if fan not in [None, "", Select.BLANK]:
+            cmd_disp["Fan"] = fan
+            cmd_payload["t_fanspeedcv"] = fan
+            self.last_fan = fan
+        else:
+            cmd_disp["Fan"] = self.last_fan
+
+        if cmd_payload:
+            self.schedule_action(total_m, device_nick, cmd_disp, cmd_payload, self.edit_index)
+            self.edit_index = None
+
+
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -210,6 +263,7 @@ class AC1UI(App):
                 classes="tiny-row"
             ),
             Horizontal(
+                Select(options=[("AC1", "AC1"), ("AC2", "AC2")], id="schedule_device"),
                 Input(placeholder="Hours", id="hours_input", value="0"),
                 Input(placeholder="Minutes", id="minutes_input", value="0"),
                 Select(options=[("Power ON", "1"), ("Power OFF", "0")], id="power_select"),
@@ -219,6 +273,7 @@ class AC1UI(App):
                 Button("Edit", id="edit_schedule"),
                 Button("Delete", id="delete_schedule")
             ),
+
             DataTable(id="schedule_list", show_header=True),
             Footer()
         )
