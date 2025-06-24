@@ -10,14 +10,22 @@ from datetime import datetime, timedelta
 
 import os
 import json
+import platform
 
-DEFAULT_SCHEDULE_FILE = "scheduled_actions.json"
+
+import os
+import platform
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_SCHEDULE_FILE = os.path.join(BASE_DIR, "scheduled_actions.json")
 PI_SCHEDULE_FILE = "/home/tudor/connectlife/scheduled_actions.json"
 
-if os.uname().nodename.startswith("raspberrypi"):
+if platform.node().startswith("raspberrypi"):
     SCHEDULE_FILE = PI_SCHEDULE_FILE
 else:
     SCHEDULE_FILE = DEFAULT_SCHEDULE_FILE
+
+
 
 
 class AC1UI(App):
@@ -262,6 +270,16 @@ class AC1UI(App):
             pass
         except Exception as e:
             print(f"Failed to load schedules: {e}")
+
+
+    
+    def delete_schedule(self):
+        table = self.query_one("#schedule_list", DataTable)
+        if table.cursor_row is not None and table.cursor_row < len(self.scheduled_actions):
+            del self.scheduled_actions[table.cursor_row]
+            self.save_schedules()
+            self.update_schedule_table()
+
      
 
 
@@ -370,7 +388,7 @@ if __name__ == "__main__":
     passwd = os.environ.get("AC_PASSWD")
 
     if not passwd:
-        print("AC_PASSWD not set. Please enter password:")
-        passwd = getpass("Password: ")
+        print("AC_PASSWD not set")
+        passwd = getpass("Passwd: ")
 
     AC1UI(passwd).run()
