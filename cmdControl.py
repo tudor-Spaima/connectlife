@@ -84,6 +84,7 @@ class AC1UI(App):
         self.edit_index = None
 
     async def on_mount(self):
+        await self.load_schedules()
         await self.initialize_api()
         select = self.query_one("#device_select", Select)
         select.options = [("AC1", "AC1"), ("AC2", "AC2")]
@@ -163,6 +164,8 @@ class AC1UI(App):
                 self.selected_device = current_device
             self.scheduled_actions.remove(action)
         self.update_schedule_table()
+        self.save_schedules()
+
 
 
 
@@ -179,6 +182,8 @@ class AC1UI(App):
         else:
             self.scheduled_actions.append(new_action)
         self.update_schedule_table()
+        self.save_schedules()
+
 
 
     def update_schedule_table(self):
@@ -229,6 +234,32 @@ class AC1UI(App):
         if cmd_payload:
             self.schedule_action(total_m, device_nick, cmd_disp, cmd_payload, self.edit_index)
             self.edit_index = None
+
+    def save_schedules(self):
+        try:
+            with open(SCHEDULE_FILE, "w") as f:
+                json.dump([{
+                    "time": s["time"].isoformat(),
+                    "device": s["device"],
+                    "command_display": s["command_display"],
+                    "command": s["command"]
+                } for s in self.scheduled_actions], f)
+        except Exception as e:
+            print(f"Failed to save schedules: {e}")
+
+    def load_schedules(self):
+        try:
+            with open(SCHEDULE_FILE, "r") as f:
+                data = json.load(f)
+                self.scheduled_actions = []
+                for s in data:
+                    s["time"] = datetime.fromisoformat(s["time"])
+                    self.scheduled_actions.append(s)
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f"Failed to load schedules: {e}")
+     
 
 
 
