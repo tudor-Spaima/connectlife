@@ -8,6 +8,17 @@ from textual.widgets import Button, Static, Header, Footer, Select, DataTable, I
 from textual.reactive import reactive
 from datetime import datetime, timedelta
 
+import os
+import json
+
+DEFAULT_SCHEDULE_FILE = "scheduled_actions.json"
+PI_SCHEDULE_FILE = "/home/tudor/connectlife/scheduled_actions.json"
+
+if os.uname().nodename.startswith("raspberrypi"):
+    SCHEDULE_FILE = PI_SCHEDULE_FILE
+else:
+    SCHEDULE_FILE = DEFAULT_SCHEDULE_FILE
+
 
 class AC1UI(App):
     CSS = """
