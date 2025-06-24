@@ -84,7 +84,7 @@ class AC1UI(App):
         self.edit_index = None
 
     async def on_mount(self):
-        await self.load_schedules()
+        self.load_schedules()
         await self.initialize_api()
         select = self.query_one("#device_select", Select)
         select.options = [("AC1", "AC1"), ("AC2", "AC2")]
