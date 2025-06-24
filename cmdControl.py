@@ -388,12 +388,30 @@ class AC1UI(App):
             new_temp = str(min(max(int(temp_input), 16), 30))
             await self.send_command({"t_temp": new_temp})
 
-import os
-if __name__ == "__main__":
-    passwd = os.environ.get("AC_PASSWD")
+def get_password():
+    if platform.system() == "Linux":
+        return getpass("Password: ")
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(script_dir)
+        config_path = os.path.join(parent_dir, "password.json")
 
-    if not passwd:
-        print("AC_PASSWD not set")
-        passwd = getpass("Passwd: ")
+        try:
+            with open(config_path, "r") as f:
+                data = json.load(f)
+                if "password" in data:
+                    return data["password"]
+                else:
+                    print("Password key not found in JSON file. Falling back to prompt.")
+        except Exception as e:
+            print(f"Could not load password from JSON ({e}). Falling back to prompt.")
+
+        return getpass("Password: ")
+
+
+
+if __name__ == "__main__":
+    
+    passwd = get_password()
 
     AC1UI(passwd).run()
