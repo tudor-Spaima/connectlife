@@ -320,7 +320,12 @@ class AC1UI(App):
             new_temp = str(min(max(int(temp_input), 16), 30))
             await self.send_command({"t_temp": new_temp})
 
-
+import os
 if __name__ == "__main__":
-    passwd = getpass("Enter password: ")
+    passwd = os.environ.get("AC_PASSWD")
+
+    if not passwd:
+        print("AC_PASSWD not set. Please enter password:")
+        passwd = getpass("Password: ")
+
     AC1UI(passwd).run()
